@@ -1,0 +1,402 @@
+# Select the most noisy slice from three most noisy files under the folder
+import wave as we
+import numpy as np
+import matplotlib.pyplot as plt
+from shutil import copyfile
+import os
+from pydub import AudioSegment
+import math
+import pylab as pl
+import numpy as np
+import wave 
+import contextlib 
+import matplotlib.pyplot as plt  
+from scipy.io import wavfile 
+
+def get_wav_time(wav_path): 
+    
+    with contextlib.closing(wave.open(wav_path, 'r')) as f: 
+        frames = f.getnframes() 
+        rate = f.getframerate() 
+        duration = frames / float(rate) 
+        return duration 
+
+def get_max_time(path):
+    audio=we.open(path)
+    audio1= AudioSegment.from_file(path, format="wav")
+    lis=[]
+    timelis=[]
+    volumedict={}
+    for i in range(int(get_wav_time(path)/5)+1):
+        start_time = int(i*1000)
+        end_time = int(i*1000+5000)
+        b=audio1[start_time:end_time]
+        b.export('……', format="wav")
+        b=we.open('……')
+        params = b.getparams()
+        nchannels, sampwidth, framerate, nframes = params[:4]
+        strData = b.readframes(nframes)
+        waveData = np.fromstring(strData, dtype=np.int16)
+        waveData = waveData*1.0/max(abs(waveData))  # normalization
+        frameSize = 256
+        overLap = 128
+        volume=calVolume(waveData, frameSize, overLap).max()
+        #print(i,volume)
+        lis.append(volume)
+        volumedict[i]=volume
+        
+        i=i+1
+    lis.sort(reverse=True)
+    lis=lis[:1]
+    
+    for i in lis:
+        a=list(volumedict.keys())[list(volumedict.values()).index(i)]
+   
+    return a
+
+def wavread(path):
+    wavfile =  we.open(path,"rb")
+    params = wavfile.getparams()
+    framesra,frameswav= params[2],params[3]
+    datawav = wavfile.readframes(frameswav)
+    wavfile.close()
+    datause = np.fromstring(datawav,dtype = np.short)
+    datause.shape = -1,2
+    datause = datause.T
+    time = np.arange(0, frameswav) * (1.0/framesra)
+    return datause,time
+
+def calVolume(waveData, frameSize, overLap):
+    wlen = len(waveData)
+    step = frameSize - overLap
+    frameNum = int(math.ceil(wlen*1.0/step))
+    volume = np.zeros((frameNum,1))
+    for i in range(frameNum):
+        curFrame = waveData[np.arange(i*step,min(i*step+frameSize,wlen))]
+        curFrame = curFrame - np.median(curFrame) # zero-justified
+        volume[i] = np.sum(np.abs(curFrame))
+    return volume
+
+
+allFileNum = 0
+def printPath(level, path):
+    global allFileNum
+    dirList = []
+    fileList = []
+    files = os.listdir(path) 
+    dirList.append(str(level)) 
+    foldername=path[38:]
+    for f in files:
+        if(os.path.isdir(path + '/' + f)): 
+            if(f[0] == '.'):
+                pass
+            else:    
+                dirList.append(f)
+        if(os.path.isfile(path + '/' + f)):
+            if "Band" not in f:   
+                   fileList.append(f) 
+        i_dl = 0
+    for dl in dirList:
+        if(i_dl == 0):
+            i_dl = i_dl + 1
+        else:
+           
+            printPath((int(dirList[0]) + 1), path + '/' + dl) 
+    for fl in fileList:
+       
+        allFileNum = allFileNum + 1
+    volumedict={}
+    maxlist=[]
+    for i in fileList:
+        
+       
+        print('……'+i)
+        wavedata,wavtime = wavread('……'+foldername+'\\'+i)
+        f = we.open('……'+foldername+'\\' + i, "rb")
+        params = f.getparams()
+        nchannels, sampwidth, framerate, nframes = params[:4]
+        strData = f.readframes(nframes)
+        waveData = np.fromstring(strData, dtype=np.int16)
+        waveData = waveData*1.0/max(abs(waveData))  # normalization
+        f.close()
+       
+        print(i)
+        plt.show()
+        # calculate volume
+        frameSize = 256
+        overLap = 128
+        volume=calVolume(waveData, frameSize, overLap).max()
+        #print(i,volume)
+        maxlist.append(volume)
+        volumedict[i]=volume
+      
+    maxlist.sort(reverse=True)
+    maxlist=maxlist[:3]
+    for i in maxlist:
+        a=list(volumedict.keys())[list(volumedict.values()).index(i)]
+        
+        sound = AudioSegment.from_file('……'+foldername+'\\'+a, format="wav")
+        path='……'+foldername+'\\'+a
+        start_time=get_max_time(path)*1000
+        end_time=start_time+5000
+        word = sound[start_time:end_time]
+        word.export('……'+a, format="wav")
+        
+        
+ # draw the most noisy files without blank
+ from PIL import Image
+from skimage import io
+def corp_margin(img):
+        
+        img2=img.sum(axis=2)
+        (row,col)=img2.shape
+        row_top=0
+        raw_down=0
+        col_top=0
+        col_down=0
+        for r in range(0,row):
+                if img2.sum(axis=1)[r]<700*col:
+                        row_top=r
+                        break
+ 
+        for r in range(row-1,0,-1):
+                if img2.sum(axis=1)[r]<700*col:
+                        raw_down=r
+                        break
+ 
+        for c in range(0,col):
+                if img2.sum(axis=0)[c]<700*row:
+                        col_top=c
+                        break
+ 
+        for c in range(col-1,0,-1):
+                if img2.sum(axis=0)[c]<700*row:
+                        col_down=c
+                        break
+ 
+        new_img=img[row_top:raw_down+1,col_top:col_down+1,0:3]
+        return new_img
+        
+ import wave as we
+import numpy as np
+import matplotlib.pyplot as plt
+from shutil import copyfile
+import os
+from pydub import AudioSegment
+import math
+import pylab as pl
+import numpy as np
+import librosa
+import matplotlib.pyplot as plt
+import numpy as np
+import librosa.display
+
+def wavread(path):
+    wavfile =  we.open(path,"rb")
+    params = wavfile.getparams()
+    framesra,frameswav= params[2],params[3]
+    datawav = wavfile.readframes(frameswav)
+    wavfile.close()
+    datause = np.fromstring(datawav,dtype = np.short)
+    datause.shape = -1,2
+    datause = datause.T
+    time = np.arange(0, frameswav) * (1.0/framesra)
+    return datause,time
+
+allFileNum = 0
+def printPath(level, path):
+    global allFileNum
+    dirList = []
+    fileList = []
+    files = os.listdir(path)
+    dirList.append(str(level)) 
+    foldername=path[39:]
+    print(foldername)
+    for f in files:
+        if(os.path.isdir(path + '/' + f)): 
+            if(f[0] == '.'):
+                pass
+            else:    
+                dirList.append(f)
+        if(os.path.isfile(path + '/' + f)):
+            if "Band" not in f:   
+                   fileList.append(f) 
+        i_dl = 0
+    for dl in dirList:
+        if(i_dl == 0):
+            i_dl = i_dl + 1
+        else:
+               
+            printPath((int(dirList[0]) + 1), path + '/' + dl) 
+    for fl in fileList:
+        
+        allFileNum = allFileNum + 1 
+    volumedict={}
+    maxlist=[]
+    for i in fileList:
+        wavedata,wavtime = wavread('……'+foldername+'\\'+i)
+        
+        f = we.open('……'+foldername+'\\' + i, "rb")
+        params = f.getparams()
+        nchannels, sampwidth, framerate, nframes = params[:4]
+        strData = f.readframes(nframes)
+        waveData = np.fromstring(strData, dtype=np.int16)
+        
+        waveData = waveData*1.0/max(abs(waveData))  # normalization
+        f.close()
+        
+        
+        print(i)
+        y, sr = librosa.load('……'+foldername+'\\' + i,sr=None)
+        y = y*1.0/max(abs(y))
+        plt.figure(figsize=(20, 20))
+        D = librosa.amplitude_to_db(librosa.stft(y), ref=np.max)# short time fourier transform
+        plt.subplot(4, 2, 1)
+        librosa.display.specshow(D, y_axis='linear')
+        plt.savefig('……'+foldername+'\\'+i[0]+'.JPG')
+        plt.axis('off')
+        plt.savefig('……'foldername+'\\'+i[0]+'.jpg',bbox_inches='tight',pad_inches =0)
+        im = io.imread('……'+foldername+'\\'+i[0]+'.jpg')
+        img_re = corp_margin(im)
+        io.imsave('……'+foldername+'\\'+i[0]+'.jpg',img_re)
+        io.imshow(img_re)
+        
+        
+ # Convert the image to the grayscales images and create a dataframe to store the information (one example)
+ import pandas as pd
+df=pd.DataFrame()
+target=[]
+for i in os.listdir('C:\\Users\\CON_RJU\\Desktop\\figures\\ok'):
+    im=Image.open('C:\\Users\\CON_RJU\\Desktop\\figures\\ok\\'+i).convert('L')
+    pix=im.load()
+    width=im.size[0]
+    height=im.size[1]
+    lis=[]
+    for x in range(width):
+        for y in range(height):
+            lis.append(pix[x,y])
+    lis.append(0)
+    target.append(0)#0 means type 'ok'
+    
+    df=df.append([lis])
+    
+ # shuffle the training data and train the model
+ import random
+ a=df.sample(frac=1)
+
+import numpy as np
+from sklearn import neighbors
+import matplotlib.pyplot as plt
+from sklearn import model_selection
+def KNN_valuechoise(X_train, y_train, K_num):
+   
+    K = np.arange(1,K_num+1)
+    length = len(K)
+
+    accuracy = []
+    for k in K:
+       
+        cv_result = model_selection.cross_val_score(neighbors.KNeighborsClassifier(n_neighbors = int(k), weights = 'distance'), 
+                                                    X_train, y_train, cv = 9, scoring='accuracy')
+        accuracy.append(cv_result.mean())
+
+    arg_max = np.array(accuracy).argmax()
+    
+    plt.rcParams['font.sans-serif'] = [u'SimHei']
+    plt.rcParams['axes.unicode_minus'] = False
+   
+    plt.plot(K, accuracy)
+
+    plt.scatter(K, accuracy)
+    
+    plt.text(K[arg_max], accuracy[arg_max], 'the best k is %s' %int(K[arg_max]))
+    plt.xticks(np.arange(K_num+1), np.arange(K_num+1))
+    
+    plt.show()
+    
+KNN_valuechoise(df, target, 9)
+
+training=a.iloc[:,:-1]
+targety=a.iloc[:,-1]
+from sklearn import neighbors
+from sklearn import datasets
+
+knn = neighbors.KNeighborsClassifier(n_neighbors=1,weights='uniform',algorithm='auto')
+knn.fit(training,targety)
+ 
+ targetlis=[]
+ 
+ import wave as we
+import numpy as np
+import matplotlib.pyplot as plt
+from shutil import copyfile
+import os
+from pydub import AudioSegment
+import math
+import pylab as pl
+import numpy as np
+from PIL import Image
+def wavread(path):
+    wavfile =  we.open(path,"rb")
+    params = wavfile.getparams()
+    framesra,frameswav= params[2],params[3]
+    datawav = wavfile.readframes(frameswav)
+    wavfile.close()
+    datause = np.fromstring(datawav,dtype = np.short)
+    datause.shape = -1,2
+    datause = datause.T
+    time = np.arange(0, frameswav) * (1.0/framesra)
+    return datause,time
+
+def calVolume(waveData, frameSize, overLap):
+    wlen = len(waveData)
+    step = frameSize - overLap
+    frameNum = int(math.ceil(wlen*1.0/step))
+    volume = np.zeros((frameNum,1))
+    for i in range(frameNum):
+        curFrame = waveData[np.arange(i*step,min(i*step+frameSize,wlen))]
+        curFrame = curFrame - np.median(curFrame) # zero-justified
+        volume[i] = np.sum(np.abs(curFrame))
+    return volume
+
+
+allFileNum = 0
+def printPath(level, path):
+    global allFileNum
+    dirList = []
+    fileList = []
+    files = os.listdir(path) 
+    dirList.append(str(level)) 
+    foldername=path[37:]
+    for f in files:
+        if(os.path.isdir(path + '/' + f)): 
+            if(f[0] == '.'):
+                pass
+            else:    
+                dirList.append(f)
+        if(os.path.isfile(path + '/' + f)):
+            if "Band" not in f:   
+                   fileList.append(f) 
+        i_dl = 0
+    for dl in dirList:
+        if(i_dl == 0):
+            i_dl = i_dl + 1
+        else:
+            
+            printPath((int(dirList[0]) + 1), path + '/' + dl) 
+    for fl in fileList:
+    
+        allFileNum = allFileNum + 1
+    for i in fileList:
+        im = Image.open('……'+foldername+'\\'+i).convert('L')
+        pix=im.load()
+        width = im.size[0] 
+        height = im.size[1]
+        lis=[]
+        for x in range(width): 
+            for y in range(height): 
+                a=pix[x,y]
+                lis.append(a)
+        for i in knn.predict([lis]):
+            print('prediction：'+targetlis[i])
+        
