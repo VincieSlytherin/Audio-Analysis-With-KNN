@@ -1,0 +1,97 @@
+import numpy as np
+import os
+import math
+import pylab as pl
+import numpy as np
+import matplotlib.pyplot as plt
+import cv2
+from numpy import shape
+import random
+allFileNum = 0
+
+def GaussianNoise(src,means,sigma,percetage):   
+    NoiseImg=src
+    NoiseNum=int(percetage*src.shape[0]*src.shape[1])
+    for i in range(NoiseNum):
+        randX=random.randint(0,src.shape[0]-1)
+        randY=random.randint(0,src.shape[1]-1)
+        
+        NoiseImg[randX,randY]=NoiseImg[randX,randY]+random.gauss(means,sigma)        
+        
+        if  NoiseImg[randX, randY]< 0:                 
+            NoiseImg[randX, randY]=0     
+        elif NoiseImg[randX, randY]>255:                 
+            NoiseImg[randX, randY]=255    
+    return NoiseImg
+def  fun1(src,percetage):     
+    NoiseImg=src    
+    NoiseNum=int(percetage*src.shape[0]*src.shape[1])
+    for i in range(NoiseNum):   
+
+        randX=random.randint(0,src.shape[0]-1)       
+        randY=random.randint(0,src.shape[1]-1)
+            
+        if random.random()<=0.5:          
+            NoiseImg[randX,randY]=0     
+        else:           
+            NoiseImg[randX,randY]=255   
+        return NoiseImg
+def printPath(level, path):
+    global allFileNum
+    dirList = []
+    fileList = []
+    files = os.listdir(path) 
+    dirList.append(str(level)) 
+    foldername=path[38:]
+    print(foldername)
+    for f in files:
+        if(os.path.isdir(path + '/' + f)): 
+            if(f[0] == '.'):
+                pass
+            else:    
+                dirList.append(f)
+        if(os.path.isfile(path + '/' + f)):
+            if "Pepper"  not in f and 'Gaussian' not in f and 'h' not in f and 'v' not in f and 'translation' not in f and 'rotate' not in f:   # 添加文件
+                   fileList.append(f)
+        i_dl = 0
+    for dl in dirList:
+        if(i_dl == 0):
+            i_dl = i_dl + 1
+        else:
+            printPath((int(dirList[0]) + 1), path + '/' + dl) 
+    for fl in fileList:
+
+        allFileNum = allFileNum + 1 
+    volumedict={}
+    maxlist=[]
+    for i in fileList:
+        print(i)
+        img=cv2.imread('……'+foldername+'\\'+i,0)
+        img2=GaussianNoise(img,2,4,0.5)
+        cv2.imwrite('……'+foldername+'\\'+i+'GaussianNoise.jpg',img2)
+    
+        img1=fun1(img,0.2)
+        cv2.imwrite('……'+foldername+'\\'+i+'PepperandSalt.jpg',img1)
+        # Flipped Horizontally
+        h_flip = cv2.flip(img, 1)
+        cv2.imwrite('……'+foldername+'\\'+i+"-h.jpg", h_flip)
+
+        # Flipped Vertically 
+        v_flip = cv2.flip(img, 0)
+        cv2.imwrite('……'+foldername+'\\'+i+"-v.jpg", v_flip)
+
+        # Flipped Horizontally & Vertically 
+        hv_flip = cv2.flip(img, -1)
+        cv2.imwrite('……'+foldername+'\\'+i+"-hv.jpg", hv_flip)
+        
+        # translation 
+        rows,cols = img.shape
+        M = np.float32([[1,0,50],[0,1,50]])
+        dst = cv2.warpAffine(img,M,(cols,rows))
+        cv2.imwrite('……'+foldername+'\\'+i+'translation.jpg',dst)
+        
+        #rotate 
+        # cols-1 and rows-1 are the coordinate limits.
+        M = cv2.getRotationMatrix2D(((cols-1)/2.0,(rows-1)/2.0),90,1)
+        dst1 = cv2.warpAffine(img,M,(cols,rows))
+        cv2.imwrite('……'+foldername+'\\'+i+'rotate.jpg',dst1)
